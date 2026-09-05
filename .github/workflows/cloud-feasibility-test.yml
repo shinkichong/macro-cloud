@@ -14,7 +14,10 @@
           run: |
             apt-get update
             DEBIAN_FRONTEND=noninteractive apt-get install -y \
-              python3 python3-pip wget gnupg ca-certificates
+              python3 python3-pip wget gnupg ca-certificates git
+
+        - name: 저장소 체크아웃
+          uses: actions/checkout@v4
 
         - name: apt-get install chromium-browser 시도 (흔한 가이드 방식)
           run: |
@@ -33,7 +36,5 @@
         - name: 파이썬 의존성 설치
           run: pip3 install requests selenium webdriver-manager
 
-        - name: 테스트 스크립트 다운로드
-          run: wget -q -O /tmp/cloud_test.py https://raw.githubusercontent.com/shinkichong/macro-cloud/main/scripts/cloud_test.py
         - name: KRX / 네이버 접근성 + Selenium 테스트
-          run: python3 /tmp/cloud_test.py
+          run: python3 scripts/cloud_test.py

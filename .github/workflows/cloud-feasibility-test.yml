@@ -1,14 +1,79 @@
-name: cloud-feasibility-test
-on:
-  workflow_dispatch:
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:22.04
-    steps:
-      - name: Check container
-        run: |
-          echo "Container OS:"
-          cat /etc/os-release
-          echo "Feasibility test OK"
+  on:
+    workflow_dispatch:
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      container:
+        image: ubuntu:22.04
+
+      steps:
+        - name: 기본 패키지 설치 (맨 Ubuntu 상태 재현)
+          run: |
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y \
+              python3 python3-pip wget gnupg ca-certificates
+
+        - name: apt-get install chromium-browser 시도 (흔한 가이드 방식)
+          run: |
+            DEBIAN_FRONTEND=noninteractive apt-get install -y chromium-browser chromium-chromedriver
+            echo "----- 설치 결과 확인 -----"
+            which chromium-browser || echo "chromium-browser 바이너리 없음"
+            which chromedriver || echo "chromedriver 바이너리 없음"
+          continue-on-error: true
+
+        - name: 구글 크롬 .deb 직접 설치 (검증된 대체 방법)
+          run: |
+            wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            apt-get install -y /tmp/chrome.deb
+            google-chrome --version
+
+        - name: 파이썬 의존성 설치
+          run: pip3 install --break-system-packages requests selenium webdriver-manager
+
+        - name: KRX / 네이버 접근성 + Selenium 테스트
+          run: |
+            cat > /tmp/test.py <<'PYEOF'
+  import requests
+  from selenium import webdriver
+  from selenium.webdriver.chrome.options import Options
+  from selenium.webdriver.chrome.service import Service
+  from webdriver_manager.chrome import ChromeDriverManager
+
+  print("=== Selenium (Google Chrome, headless) ===")
+  opts = Options()
+  opts.add_argument("--headless=new")
+  opts.add_argument("--no-sandbox")
+  opts.add_argument("--disable-dev-shm-usage")
+  opts.binary_location = "/usr/bin/google-chrome"
+  service = Service(ChromeDriverManager().install())
+  driver = webdriver.Chrome(service=service, options=opts)
+  try:
+      targets = [
+          ("10년/5년 국채선물지수 페이지", "https://index.krx.co.kr/contents/MKD/03/0305/03050100/MKD03050100.jsp"),
+          ("VKOSPI 페이지", "https://index.krx.co.kr/contents/MKD/03/0305/03050200/MKD03050200.jsp"),
+          ("KOSPI 차트 (네이버)", "https://m.stock.naver.com/fchart/domestic/index/KOSPI"),
+      ]
+      for name, url in targets:
+          try:
+              driver.get(url)
+              print(f"[OK] {name}: title={driver.title!r} html_len={len(driver.page_source)}")
+          except Exception as e:
+              print(f"[FAIL] {name}: {e}")
+  finally:
+      driver.quit()
+
+  print("\n=== requests 접근성 확인 (로그인/인증 시도 없음) ===")
+  checks = [
+      ("kakao API 서버", "https://kapi.kakao.com"),
+      ("KRX 투자자별거래실적 화면(로그인 필요 예상)",
+  "https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201"),
+  ]
+  for name, url in checks:
+      try:
+          r = requests.get(url, timeout=10)
+          print(f"[OK] {name}: status={r.status_code} len={len(r.text)}")
+      except Exception as e:
+          print(f"[FAIL] {name}: {e}")
+  PYEOF
+            python3 /tmp/test.py

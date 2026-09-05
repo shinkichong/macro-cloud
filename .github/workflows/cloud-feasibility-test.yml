@@ -1,10 +1,14 @@
 name: cloud-feasibility-test
-
 on:
   workflow_dispatch:
-
 jobs:
   test:
     runs-on: ubuntu-latest
-   container:
+    container:
       image: ubuntu:22.04
+    steps:
+      - name: Check container
+        run: |
+          echo "Container OS:"
+          cat /etc/os-release
+          echo "Feasibility test OK"

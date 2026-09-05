@@ -34,8 +34,6 @@
           run: pip3 install requests selenium webdriver-manager
 
         - name: 테스트 스크립트 다운로드
-          run: wget -q -O /tmp/cloud_test.py
-  https://raw.githubusercontent.com/shinkichong/macro-cloud/main/scripts/cloud_test.py
-
+          run: wget -q -O /tmp/cloud_test.py https://raw.githubusercontent.com/shinkichong/macro-cloud/main/scripts/cloud_test.py
         - name: KRX / 네이버 접근성 + Selenium 테스트
           run: python3 /tmp/cloud_test.py
